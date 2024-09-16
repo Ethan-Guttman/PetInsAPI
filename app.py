@@ -35,11 +35,11 @@ def get_customers():
 def create_customer():
     data = request.json
     result = customerCollection.insert_one({
-        'First_Name': data['first_name'],
-        'Last_Name': data['last_name'],
-        'Date_of_birth': data['date_of_birth'],
-        'Insurance_provider': data['insurance_provider'],
-        'Policy_number': data['policy_number'],
+        'first_name': data['first_name'],
+        'last_name': data['last_name'],
+        'date_of_birth': data['date_of_birth'],
+        'insurance_provider': data['insurance_provider'],
+        'policy_number': data['policy_number'],
         })
     #print(result.inserted_id)
     return jsonify({"message": "customer created!", "id": str(result.inserted_id)}), 201
@@ -75,28 +75,18 @@ def delete_pet(name):
         return jsonify({"error": "pet not found"}), 404
     return jsonify({"message": "pet deleted!"})
 
-@app.route('/api/add', methods=['POST'])
+@app.route('/api/calculatecost', methods=['POST'])
 def calculate_cost():
     try:
-        # Parse the request body to get numbers
         data = request.json
-        numbers = data.get('numbers', [])
-
-        if not isinstance(numbers, list) or not all(isinstance(n, (int, float)) for n in numbers):
-            return jsonify({"error": "Invalid input, 'numbers' should be a list of numbers"}), 400
-
-        # Compute the sum of numbers
-        total_sum = sum(numbers)
-
-        # Check if sum exceeds the hard limit
-        if total_sum > 200:
-            return jsonify({"error": f"Sum exceeds the limit of {200}"}), 400
-
-        # Ask ChatGPT to confirm the sum or provide additional processing
-        prompt = f"The sum of the numbers {numbers} is {total_sum}. Please confirm this addition. Return only a number"
         
+        prompt = "<cost settings>Checkups are $10, vaccinations $20, blood tests $30, oral health exams $40 and orthopedic surgeries are $50. "
+        prompt += "All insurance providers have a deductible of $10 except for united healthcare having one of $30. All providers will refuse to pay for pets above 12 years old </cost settings>"
+        prompt += f"You are an insurance adjuster. Given the following information about the pet, the treatment and the customers provider, please give a cost minus the reimbursed amount. Please confirm this addition. Return only a number"
+        prompt += f"<provider>{data['provider']}</provider><treatment>{data['treatment']}</treatment><age>{data['age']}</age>"
+
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Use the appropriate GPT model
+            model="gpt-3.5-turbo",  
             messages=[
                 {
                     "role": "user",
@@ -105,13 +95,9 @@ def calculate_cost():
             ]
         )
 
-        # Extract ChatGPT response
-        answer = response['choices'][0]['text'].strip()
+        answer = response.choices[0].message.content
 
-        # Return the result as JSON
         return jsonify({
-            "numbers": numbers,
-            "sum": total_sum,
             "chatgpt_confirmation": answer
         })
 
